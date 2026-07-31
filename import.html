@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import Customers — Operations Portal</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .import-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .import-card h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem;
+    }
+    .file-drop {
+      border: 1px dashed var(--border-light);
+      border-radius: var(--radius);
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    .file-drop input { margin-top: 0.75rem; }
+    .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0; }
+    .stat {
+      background: var(--surface-3);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      min-width: 8rem;
+    }
+    .stat .num { font-size: 1.5rem; font-weight: 600; font-family: var(--font-mono); }
+    .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+    table.preview { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 1rem; }
+    table.preview th, table.preview td {
+      border-bottom: 1px solid var(--border);
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+      white-space: nowrap;
+      max-width: 12rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    table.preview th { color: var(--text-muted); font-weight: 500; font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; }
+    .progress-track {
+      height: 8px;
+      background: var(--surface-3);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 1rem 0 0.5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+    .log-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .log-line.err { color: var(--danger); }
+    .log-line.ok { color: #4ade80; }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-light);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 0.6rem 1.2rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { border-color: #2E3850; }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-backdrop" id="backdrop"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon" style="height:2rem;width:2rem;font-size:0.8rem;">IS</div>
+        <span class="brand-name" style="font-size:0.9rem;">Operations Portal</span>
+        <button class="sidebar-close" id="sidebar-close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav" id="nav-list"></nav>
+      <div class="sidebar-footer">
+        <div class="profile-row">
+          <div class="avatar" id="avatar-initial">?</div>
+          <div class="profile-meta">
+            <p class="profile-name" id="profile-name">Loading…</p>
+            <span class="role-badge" id="role-badge"></span>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Log out
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menu-toggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
+        <span class="breadcrumb">/import.html</span>
+      </header>
+
+      <main class="page-content">
+        <h1>Import Customers</h1>
+        <p>Upload your Customer Master CSV — it's mapped to the database schema automatically. Admin only.</p>
+
+        <div class="import-card" style="margin-top:1.5rem;">
+          <h2>1. Choose file</h2>
+          <div class="file-drop">
+            Select your <code>Copy_of_Customer_Master_-_Database.csv</code> (or any export with the same columns)
+            <br />
+            <input type="file" id="file-input" accept=".csv" />
+          </div>
+        </div>
+
+        <div class="import-card hidden" id="preview-card">
+          <h2>2. Preview</h2>
+          <div class="stat-row">
+            <div class="stat"><div class="num" id="stat-total">0</div><div class="label">Rows found</div></div>
+            <div class="stat"><div class="num" id="stat-skip">0</div><div class="label">Missing name (skipped)</div></div>
+            <div class="stat"><div class="num" id="stat-ready">0</div><div class="label">Ready to import</div></div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="preview" id="preview-table"></table>
+          </div>
+          <p style="font-size:0.8rem;color:var(--text-dim);margin-top:0.75rem;">Showing first 5 rows only. Re-running an import will add duplicate rows — this does not check for existing customers.</p>
+          <button class="btn-primary" id="start-import-btn" style="margin-top:1rem;width:auto;padding-left:1.5rem;padding-right:1.5rem;">Start import</button>
+        </div>
+
+        <div class="import-card hidden" id="progress-card">
+          <h2>3. Importing…</h2>
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <p style="font-size:0.8rem;color:var(--text-muted);" id="progress-label">0 / 0 rows</p>
+          <div class="log-box" id="log-box"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script>
+    // ---------------------------------------------------------------------
+    // Nav + profile chrome (same pattern as dashboard.html)
+    // ---------------------------------------------------------------------
+    const NAV_ITEMS = [
+      { label: 'Dashboard', href: 'dashboard.html', icon: '<path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>' },
+      { label: 'Customers', href: 'customers.html', icon: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>' },
+      { label: 'Import',    href: 'import.html',    icon: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>', adminOnly: true },
+      { label: 'Settings',  href: 'settings.html',  icon: '<circle cx="12" cy="12" r="3"/>', adminOnly: true },
+    ];
+    const currentPage = window.location.pathname.split('/').pop();
+    function renderNav(role) {
+      document.getElementById('nav-list').innerHTML = NAV_ITEMS
+        .filter((item) => !item.adminOnly || role === 'admin')
+        .map((item) => `<a class="nav-item ${item.href === currentPage ? 'active' : ''}" href="${item.href}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${item.icon}</svg>${item.label}</a>`)
+        .join('');
+    }
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('backdrop');
+    document.getElementById('menu-toggle').addEventListener('click', () => { sidebar.classList.add('open'); backdrop.classList.add('visible'); });
+    document.getElementById('sidebar-close').addEventListener('click', closeDrawer);
+    backdrop.addEventListener('click', closeDrawer);
+    function closeDrawer() { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); }
+
+    // ---------------------------------------------------------------------
+    // CSV -> customers row mapping
+    // ---------------------------------------------------------------------
+
+    function parseBool(v) {
+      return String(v || '').trim().toUpperCase() === 'TRUE';
+    }
+
+    function parseDateDDMMYYYY(v) {
+      const s = String(v || '').trim();
+      if (!s) return null;
+      const m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+      if (!m) return null;
+      const [, d, mo, y] = m;
+      return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    function parseNumber(v) {
+      const s = String(v || '').trim();
+      if (!s) return null;
+      const n = Number(s.replace(/,/g, ''));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function parseIntOrNull(v) {
+      const s = String(v || '').trim();
+      if (!s) return null;
+      const n = parseInt(s, 10);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function mapRow(row, createdBy) {
+      const name = String(row['Party A/c Name'] || '').trim();
+      if (!name) return null; // caller filters these out as "skipped"
+
+      return {
+        legacy_id: parseIntOrNull(row['ID']),
+        name: name,
+        trade_name: row['Trade Name'] || null,
+        contact_person: row['Contact Person'] || null,
+        email: row['E-Mail ID'] || null,
+        mobile_1: row['Mobile No 1'] || null,
+        mobile_2: row['Mobile No 2'] || null,
+        whatsapp_no: row['Watsapp No'] || null,
+        telephone_no: row['Telephone No.'] || null,
+        locality: row['Locality'] || null,
+        area: row['Area'] || null,
+        city: row['City'] || null,
+        district: row['District'] || null,
+        state: row['State'] || null,
+        pincode: row['Pincode'] || null,
+        map_link: row['Map Link'] || null,
+        type: row['Type'] || null,
+        category: row['Category'] || null,
+        registration: row['Registration'] || null,
+        registration_no: row['Registration no'] || null,
+        product_categories: {
+          wool_ball: parseBool(row['C (Wool Ball)']),
+          wool_hank: parseBool(row['C (Wool Hank)']),
+          raincoat: parseBool(row['C (Raincoat)']),
+          apparel: parseBool(row['C (Apparell)']),
+          misc: parseBool(row['C (Misc)']),
+          handicrafts: parseBool(row['C ( Handicrafts )']),
+          umbrellas: parseBool(row['C (Umbrellas)']),
+          baby_products: parseBool(row['C ( Baby Products )']),
+          umbrella_parts: parseBool(row['C ( Umb Parts)']),
+        },
+        verified_on: parseDateDDMMYYYY(row['Verified On']),
+        status: (row['Status'] || '').trim() || 'Visit Pending',
+        credit_limit: parseNumber(row['Credit Limit']),
+        transport: row['Transport'] || null,
+        beat: row['Beat'] || null,
+        reserve_option: row['Reserve Option'] || null,
+        is_active: true,
+        created_by: createdBy,
+      };
+    }
+
+    // ---------------------------------------------------------------------
+    // File handling + preview
+    // ---------------------------------------------------------------------
+
+    let mappedRows = [];
+    let skippedCount = 0;
+    let currentUserId = null;
+
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const raw = results.data;
+          mappedRows = [];
+          skippedCount = 0;
+
+          raw.forEach((row) => {
+            const mapped = mapRow(row, currentUserId);
+            if (mapped) mappedRows.push(mapped);
+            else skippedCount++;
+          });
+
+          document.getElementById('stat-total').textContent = raw.length;
+          document.getElementById('stat-skip').textContent = skippedCount;
+          document.getElementById('stat-ready').textContent = mappedRows.length;
+
+          const cols = ['name', 'trade_name', 'city', 'state', 'mobile_1', 'status', 'category'];
+          const table = document.getElementById('preview-table');
+          table.innerHTML =
+            '<tr>' + cols.map((c) => `<th>${c}</th>`).join('') + '</tr>' +
+            mappedRows.slice(0, 5).map((r) =>
+              '<tr>' + cols.map((c) => `<td>${r[c] ?? ''}</td>`).join('') + '</tr>'
+            ).join('');
+
+          document.getElementById('preview-card').classList.remove('hidden');
+        },
+      });
+    });
+
+    // ---------------------------------------------------------------------
+    // Batch insert
+    // ---------------------------------------------------------------------
+
+    function logLine(text, cls) {
+      const box = document.getElementById('log-box');
+      const div = document.createElement('div');
+      div.className = 'log-line' + (cls ? ' ' + cls : '');
+      div.textContent = text;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    document.getElementById('start-import-btn').addEventListener('click', async () => {
+      document.getElementById('start-import-btn').disabled = true;
+      document.getElementById('progress-card').classList.remove('hidden');
+
+      const BATCH_SIZE = 200;
+      const total = mappedRows.length;
+      let done = 0;
+      let failedRows = 0;
+
+      for (let i = 0; i < total; i += BATCH_SIZE) {
+        const batch = mappedRows.slice(i, i + BATCH_SIZE);
+        const { error } = await supabaseClient.from('customers').insert(batch);
+
+        if (error) {
+          failedRows += batch.length;
+          logLine(`Rows ${i + 1}-${i + batch.length}: FAILED — ${error.message}`, 'err');
+        } else {
+          logLine(`Rows ${i + 1}-${i + batch.length}: inserted`, 'ok');
+        }
+
+        done += batch.length;
+        document.getElementById('progress-fill').style.width = `${Math.round((done / total) * 100)}%`;
+        document.getElementById('progress-label').textContent = `${done} / ${total} rows`;
+      }
+
+      logLine(`Done. ${total - failedRows} inserted, ${failedRows} failed, ${skippedCount} skipped (missing name).`, failedRows ? 'err' : 'ok');
+    });
+
+    // ---------------------------------------------------------------------
+    // Auth (admin only)
+    // ---------------------------------------------------------------------
+
+    requireAuth({ allowedRoles: ['admin'] }).then(({ session, profile }) => {
+      currentUserId = session.user.id;
+      const name = (profile && profile.full_name) || session.user.email;
+      document.getElementById('profile-name').textContent = name;
+      document.getElementById('avatar-initial').textContent = name.charAt(0).toUpperCase();
+      const role = profile ? profile.role : 'worker';
+      const badge = document.getElementById('role-badge');
+      badge.classList.add(role);
+      badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin';
+      renderNav(role);
+    });
+  </script>
+</body>
+</html>
