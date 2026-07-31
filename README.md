@@ -87,3 +87,4 @@ Since there's no build step, deployment is just "upload these files":
 Nothing about your database, RLS policies, or roles changes — only how the
 frontend is built and served.
 # indoseasons
+# indoseasons
