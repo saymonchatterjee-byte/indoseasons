@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Operations Portal</title>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script>
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      window.location.href = session ? 'dashboard.html' : 'login.html';
+    });
+  </script>
+</body>
+</html>

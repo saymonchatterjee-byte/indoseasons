@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — Operations Portal</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <div class="login-wrapper">
+
+    <!-- Left: brand panel -->
+    <div class="login-brand-panel">
+      <div class="brand-mark">
+        <div class="brand-icon">IS</div>
+        <span class="brand-name">Operations Portal</span>
+      </div>
+
+      <div class="login-copy">
+        <p class="eyebrow">Line Status — Nominal</p>
+        <h1>One system for inventory,<br />customers, and access control.</h1>
+        <p>Replacing the shared spreadsheet with role-based accounts — every record traceable to the person who touched it.</p>
+      </div>
+
+      <p class="login-footnote">Authenticated access only · All activity is logged</p>
+    </div>
+
+    <!-- Right: form -->
+    <div class="login-form-panel">
+      <div class="login-form-inner">
+        <h2>Sign in</h2>
+        <p>Use the account issued by your administrator.</p>
+
+        <form id="login-form">
+          <div class="field">
+            <label for="email">Email</label>
+            <div class="field-input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6l-10 7L2 6"/><path d="M2 6h20v12H2z"/></svg>
+              <input id="email" type="email" required autocomplete="email" placeholder="you@company.com" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="field-input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              <input id="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
+            </div>
+          </div>
+
+          <div id="error-box" class="error-box hidden"></div>
+
+          <button type="submit" id="submit-btn" class="btn-primary">
+            <span id="submit-spinner" class="spin hidden" style="width:1rem;height:1rem;"></span>
+            <span id="submit-label">Sign in</span>
+          </button>
+        </form>
+
+        <p class="login-hint">Access requests go through your operations administrator.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Supabase client library via CDN, then our config, then page logic -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const form = document.getElementById('login-form');
+    const errorBox = document.getElementById('error-box');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitSpinner = document.getElementById('submit-spinner');
+    const submitLabel = document.getElementById('submit-label');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBox.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitSpinner.classList.remove('hidden');
+      submitLabel.textContent = 'Signing in…';
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      submitBtn.disabled = false;
+      submitSpinner.classList.add('hidden');
+      submitLabel.textContent = 'Sign in';
+
+      if (error) {
+        errorBox.textContent = error.message;
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      window.location.href = 'dashboard.html';
+    });
+
+    // If already logged in, skip straight to the dashboard
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.href = 'dashboard.html';
+    });
+  </script>
+</body>
+</html>
